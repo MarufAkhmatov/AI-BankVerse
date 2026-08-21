@@ -59,6 +59,14 @@ Claude Code
 - `prototype/unreal/README.md` — Stage D not started; left as a pointer, not scaffolded.
 - `.claude/launch.json` — `bankverse-api` (port 4300) and `bankverse-web` (port 5173,
   autoPort) preview configs.
+- **Hall interior redesign after a user-supplied reference photo** (2026-08-22, Central
+  Savings Bank Building / 2100 Broadway interior — see docs/63 "Reference C"): coffered
+  quilted barrel vault ceiling, arched windows with draped curtains, a long central
+  bronze-and-glass teller counter with banker's lamps, more ornate tiered chandeliers,
+  warmer/moodier lighting. Hit a real geometry bug along the way — `CylinderGeometry`'s
+  cross-section is `(x=r·sinθ, z=r·cosθ)`, not the textbook `(cos, sin)` — caught by adding
+  a temporary `window.__debug` hook and dumping actual vertex/bounding-box data (removed
+  before commit), not by guessing from a screenshot. Commit `5c44bf6`.
 - **Real rigged character pass** (2026-08-22, user pushed back on the "ceiling" above and
   asked for real movement + realism regardless): researched Ready Player Me (confirmed via
   WebFetch DNS failure that the service has genuinely shut down, not just a restriction) and
@@ -175,8 +183,9 @@ Pick one:
 ## Git
 
 Branch: `main`
-Commit: `a3a7ef2` (AI textures), preceded by `da9689d` (rigged character), `95184e2`
-(visual pass), `c2a737d`, `c2ae19c` (web-client), `f8c64b4` (core), `0f868d3` (docs)
+Commit: `5c44bf6` (hall interior redesign), preceded by `10f7845`, `a3a7ef2` (AI textures),
+`da9689d` (rigged character), `95184e2` (visual pass), `c2a737d`, `c2ae19c` (web-client),
+`f8c64b4` (core), `0f868d3` (docs)
 Working tree: clean, everything pushed to `origin/main`
 
 ## Important Notes
