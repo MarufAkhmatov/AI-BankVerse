@@ -100,11 +100,14 @@ export function buildApp(container: Container): FastifyInstance {
     const { response, agentId } = await container.orchestrator.processMessage(session, text);
     container.sessions.save(session);
 
+    // Structured payment data alongside the spoken text, so the contextual UI panel
+    // (docs/32 §4 Payment Confirmation) never has to parse it back out of prose.
     return {
       sessionId: session.id,
       agentId,
       state: session.state,
       response,
+      payment: session.pendingPayment,
     };
   });
 

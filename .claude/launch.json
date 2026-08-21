@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bankverse-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:api", "--prefix", "core"],
+      "port": 4300
+    },
+    {
+      "name": "bankverse-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "prototype/web-client"],
+      "port": 5173,
+      "autoPort": true
+    }
+  ]
+}
