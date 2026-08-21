@@ -1,0 +1,19 @@
+{
+  "name": "@bankverse/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@bankverse/ai-orchestrator": "*",
+    "@bankverse/ai-provider-mock": "*",
+    "@bankverse/banking-mock": "*",
+    "@bankverse/domain": "*",
+    "@bankverse/voice-mock": "*",
+    "fastify": "^5.1.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/domain" },
+    { "path": "packages/banking-mock" },
+    { "path": "packages/ai-provider-mock" },
+    { "path": "packages/voice-mock" },
+    { "path": "packages/ai-orchestrator" },
+    { "path": "packages/api" }
+  ]
+}
