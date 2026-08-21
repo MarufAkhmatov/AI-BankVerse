@@ -4,7 +4,7 @@ Read this before continuing any prior work. Do not repeat completed work.
 
 ## Date
 
-2026-08-21
+2026-08-22
 
 ## Developer
 
@@ -59,13 +59,37 @@ Claude Code
 - `prototype/unreal/README.md` — Stage D not started; left as a pointer, not scaffolded.
 - `.claude/launch.json` — `bankverse-api` (port 4300) and `bankverse-web` (port 5173,
   autoPort) preview configs.
+- **Real rigged character pass** (2026-08-22, user pushed back on the "ceiling" above and
+  asked for real movement + realism regardless): researched Ready Player Me (confirmed via
+  WebFetch DNS failure that the service has genuinely shut down, not just a restriction) and
+  Mixamo (needs an interactive Adobe login this environment can't automate) as free rigged-
+  human sources, then settled on `Soldier.glb` from three.js's own official example assets
+  (MIT-licensed, `mrdoob/three.js`) — the only freely fetchable option with a complete
+  Idle/Walk/Run clip set (`Michelle.glb`/`Xbot.glb` were fetched, compared, and discarded —
+  see `public/models/NOTICE.md`). New `characters/GLTFCharacterLoader.ts` (load-once +
+  `SkeletonUtils.clone()` per instance) and `characters/AnimatedCharacterController.ts`
+  (speed-based clip crossfade) replace the old procedural rig for the player and every
+  `AgentCharacter`. **Two bugs caught via screenshot and fixed**: (1) `normalizeToGround`'s
+  `Box3.setFromObject` measured a degenerate near-zero box on a freshly-cloned SkinnedMesh
+  (bone matrices not yet propagated) — every character was ~400x too small and invisible;
+  fixed by forcing `updateMatrixWorld()` and unioning each mesh's own `geometry.boundingBox`.
+  (2) a full color-multiply tint crushed the single-material character toward black; fixed
+  with a low-alpha `Color.lerp()`. Known tradeoff, disclosed to the user: `Soldier.glb` reads
+  as tactical/military (visor hidden, uniform recolored, but it's not business attire) —
+  it was the best free option found, not a perfect fit.
+- **AI-generated marble textures** (same session): user was asked and explicitly approved
+  spending part of their credit balance (10 credits total, free plan) after being told the
+  cost; generated 2 of 5 candidate surfaces (floor + wall/column marble, 4 credits, 6
+  remaining) via `nano_banana_pro`, downloaded and committed through Git LFS (`*.png` already
+  tracked). Furniture/bronze/glass remain the free procedural textures from `world/textures.ts`
+  by the user's explicit choice not to spend the rest of the balance. See
+  `public/textures/NOTICE.md`.
 
 ## Current Task
 
-None in progress — Etap A, B, C of `IMPLEMENTATION_PLAN.md` plus a visual-quality follow-up
-pass on the web client are complete. Awaiting direction on Stage D (needs Unreal Engine 5.8
-installed first), adding customer NPCs (explicitly deferred — see "Known Issues"), or a
-paid-texture pass if the user changes their mind about cost.
+None in progress — Etap A, B, C of `IMPLEMENTATION_PLAN.md`, a visual-quality pass, a real
+rigged-character swap, and a partial AI-texture pass are all complete. Awaiting direction —
+see "Next Recommended Step".
 
 ## Files Changed
 
@@ -97,12 +121,13 @@ PASS — `core`: `npm test` → 40/40 (vitest). `prototype/web-client` has no au
   option (alongside the character rig upgrade) and declined it for this pass — docs/20 (NPC
   Life Simulation) and docs/40 (NPC Behavior Architecture) describe the target behavior when
   it's picked up.
-- The character rig is stylized-articulated (proper joints, walk cycle, varied appearance),
-  not photorealistic. Getting closer to "real people" requires either paid AI-generated
-  reference art (offered, declined for cost) or, more fundamentally, moving to the Unreal +
-  MetaHuman pipeline docs/07 and docs/18 already specify — Three.js has no rigged human asset
-  to import without sourcing one externally (e.g. Mixamo), which needs explicit user sign-off
-  since it means downloading third-party files.
+- Characters now use a real rigged/skinned/animated human mesh (`Soldier.glb`, see above),
+  not the old procedural rig — but it reads as tactical/military (visor hidden, uniform
+  recolored, still not business attire), because it was the only freely-fetchable option
+  with a full Idle/Walk/Run set. Ready Player Me is confirmed dead (DNS no longer resolves —
+  not just blocked); Mixamo needs an interactive Adobe login this environment can't automate.
+  A better-fitting free rigged character, a paid one, or Unreal + MetaHuman are the remaining
+  paths — see "Next Recommended Step".
 - Docs 26–36 and 61 contain reconstructed sections — flagged inline, should be reviewed by
   the product owner against original intent.
 - `detectLanguageHeuristic` (ai-provider-mock) is a light heuristic, not a real language
@@ -131,20 +156,27 @@ PASS — `core`: `npm test` → 40/40 (vitest). `prototype/web-client` has no au
 ## Next Recommended Step
 
 Pick one:
-1. Add customer NPCs wandering/queueing in the hall (docs/20, docs/40) — deferred by explicit
-   user choice this session, not because it's hard; reuses `CharacterRig`/`CharacterAnimator`.
-2. Add a Vitest+Playwright (or similar) test suite for `prototype/web-client` so the UI flow
+1. Find/source a better-fitting rigged human (business attire, not tactical) with a full
+   walk cycle — the search this session covered three.js's bundled examples, Ready Player Me
+   (dead), and Mixamo (needs manual login); a paid character asset or a user-provided Mixamo
+   export are the next things to try. `characters/GLTFCharacterLoader.ts` and
+   `AnimatedCharacterController.ts` are already generic enough to swap the GLB URL.
+2. Add customer NPCs wandering/queueing in the hall (docs/20, docs/40) — deferred by explicit
+   user choice earlier this session; the old procedural `CharacterRig`/`CharacterAnimator`
+   (unused now, still in the tree) is the lightweight option docs/18 §9 suggests for
+   background/distant NPCs, vs. the heavier GLTF character for named agents.
+3. Generate the remaining 3 candidate textures (walnut wood, bronze, window skyline) if the
+   user wants to spend the rest of their credit balance (6 left as of this session).
+4. Add a Vitest+Playwright (or similar) test suite for `prototype/web-client` so the UI flow
    is regression-tested, not just manually verified.
-3. Install Unreal Engine 5.8 and start Stage D per `prototype/unreal/README.md`.
-4. If the user wants closer-to-photoreal characters: either approve paid AI-generated
-   reference art, or approve sourcing an externally rigged human model (e.g. Mixamo) —
-   both need explicit sign-off before spending credits or downloading third-party files.
+5. Install Unreal Engine 5.8 and start Stage D per `prototype/unreal/README.md` — the only
+   path to true MetaHuman-grade photoreal, per the project's own docs/07 and docs/18.
 
 ## Git
 
 Branch: `main`
-Commit: `95184e2` (visual pass), preceded by `c2a737d`, `c2ae19c` (web-client), `f8c64b4`
-(core), `0f868d3` (docs)
+Commit: `a3a7ef2` (AI textures), preceded by `da9689d` (rigged character), `95184e2`
+(visual pass), `c2a737d`, `c2ae19c` (web-client), `f8c64b4` (core), `0f868d3` (docs)
 Working tree: clean, everything pushed to `origin/main`
 
 ## Important Notes
