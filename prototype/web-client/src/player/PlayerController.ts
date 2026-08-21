@@ -4,8 +4,8 @@
 // concern per IMPLEMENTATION_PLAN.md Stage D).
 
 import * as THREE from "three";
-import { CharacterAnimator } from "../characters/CharacterAnimator.js";
-import { buildCharacterRig } from "../characters/CharacterRig.js";
+import { AnimatedCharacterController } from "../characters/AnimatedCharacterController.js";
+import type { CharacterInstance } from "../characters/GLTFCharacterLoader.js";
 import { InputManager } from "./InputManager.js";
 import type { HallBounds } from "../world/BankHall.js";
 
@@ -23,7 +23,7 @@ const PITCH_MAX = 0.65;
 export class PlayerController {
   readonly body: THREE.Group;
 
-  private readonly animator: CharacterAnimator;
+  private readonly animator: AnimatedCharacterController;
   // yaw=0 keeps the forward-movement formula below aligned with world -Z ("deeper into
   // the hall") as the default "W" direction, and the camera (see updateCamera) then sits
   // on the +Z side — i.e. behind the player, between them and the entrance — for free.
@@ -36,16 +36,12 @@ export class PlayerController {
     private readonly input: InputManager,
     private readonly bounds: HallBounds,
     spawnPosition: THREE.Vector3,
+    character: CharacterInstance,
   ) {
-    const rig = buildCharacterRig({
-      clothingColor: 0x1f2733,
-      accentColor: 0xc9a55c,
-      hairColor: 0x241a12,
-    });
-    this.body = rig.group;
+    this.body = character.group;
     this.body.name = "PLACEHOLDER_Player";
     this.body.position.copy(spawnPosition);
-    this.animator = new CharacterAnimator(rig.joints);
+    this.animator = new AnimatedCharacterController(character.mixer, character.animations);
   }
 
   update(deltaSeconds: number): void {
@@ -68,8 +64,8 @@ export class PlayerController {
       next.x = clamp(next.x, this.bounds.minX, this.bounds.maxX);
       next.z = clamp(next.z, this.bounds.minZ, this.bounds.maxZ);
       this.body.position.copy(next);
-      // The rig's local +Z is its face direction (nose/badge) — see CharacterRig.ts —
-      // so no extra offset here, unlike the old undirected capsule placeholder.
+      // Mixamo-sourced rigs face local +Z in their bind pose, same convention as the
+      // rig this replaced — verified against a screenshot after import (see main.ts).
       this.body.rotation.y = Math.atan2(direction.x, direction.z);
     } else {
       this.currentSpeed = Math.max(0, this.currentSpeed - ACCEL * deltaSeconds);
