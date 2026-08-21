@@ -1,32 +1,45 @@
 // Single-floor flagship hall — docs/61_FLAGSHIP_BANK_ARCHITECTURE.md,
-// docs/62_BANK_FLOOR_PLAN.md. Correct scale and composition, procedural PBR-ish
-// materials (docs/33 §3), no external texture files (docs/33 §9 Visual Quality Gate —
-// still PLACEHOLDER until real photographed/scanned textures replace it).
+// docs/62_BANK_FLOOR_PLAN.md. Correct scale and composition. Floor/wall/column marble is
+// AI-generated photographic texture (public/textures/, see NOTICE.md there); furniture and
+// fixtures stay on the procedural canvas textures from textures.ts — docs/33 §9 Visual
+// Quality Gate still applies, all of this remains PLACEHOLDER until real scanned material
+// libraries replace it.
 
 import * as THREE from "three";
 import { HALL } from "../constants.js";
 import {
   createBrushedMetalTexture,
   createFloorEmblemTexture,
-  createMarbleTexture,
   createSkylineTexture,
   createWoodTexture,
 } from "./textures.js";
 
+const textureLoader = new THREE.TextureLoader();
+
+function loadPhotoTexture(url: string, repeat: number): THREE.Texture {
+  const texture = textureLoader.load(url);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeat, repeat);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
 function buildMaterials() {
-  const floorTex = createMarbleTexture({ base: "#d8cba8", vein: "#8a7550", repeat: 8, seed: 1 });
-  const wallTex = createMarbleTexture({ base: "#ece1c8", vein: "#c7b98f", repeat: 3, seed: 2 });
-  const columnTex = createMarbleTexture({ base: "#e3d7b8", vein: "#b9a878", repeat: 1.4, seed: 4 });
+  const floorTex = loadPhotoTexture("/textures/floor_marble.png", 6);
+  const wallTex = loadPhotoTexture("/textures/wall_marble.png", 3);
+  const columnTex = loadPhotoTexture("/textures/wall_marble.png", 1.2);
   const walnutTex = createWoodTexture({ base: "#3a2617", grain: "#1c120a", repeat: 2, seed: 7 });
   const bronzeTex = createBrushedMetalTexture({ base: "#8a6a3a", repeat: 1, seed: 3 });
   const skylineTex = createSkylineTexture(11);
 
   return {
-    floor: new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.32, metalness: 0.08 }),
+    floor: new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.28, metalness: 0.06 }),
     floorEmblem: new THREE.MeshStandardMaterial({ map: createFloorEmblemTexture("#c9a55c"), roughness: 0.4, metalness: 0.3 }),
-    wall: new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.65, metalness: 0.03 }),
+    wall: new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.55, metalness: 0.02 }),
     ceiling: new THREE.MeshStandardMaterial({ color: 0x2c2619, roughness: 0.85, metalness: 0.0 }),
-    column: new THREE.MeshStandardMaterial({ map: columnTex, roughness: 0.5, metalness: 0.05 }),
+    column: new THREE.MeshStandardMaterial({ map: columnTex, roughness: 0.4, metalness: 0.04 }),
     columnCap: new THREE.MeshStandardMaterial({ map: bronzeTex, roughness: 0.3, metalness: 0.75 }),
     bronze: new THREE.MeshStandardMaterial({ map: bronzeTex, roughness: 0.3, metalness: 0.85 }),
     walnut: new THREE.MeshStandardMaterial({ map: walnutTex, roughness: 0.45, metalness: 0.08 }),
