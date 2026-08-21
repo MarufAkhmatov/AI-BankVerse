@@ -3,9 +3,11 @@
 // contextual UI together against core/packages/api over HTTP.
 
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { bankverseApi } from "./api/client.js";
 import type { ChatResponse } from "./api/client.js";
 import { AgentCharacter, type AgentStatus } from "./agents/AgentCharacter.js";
+import { APPEARANCE_PRESETS } from "./characters/CharacterRig.js";
 import { DEMO_ACCOUNT_ID, DEMO_CUSTOMER_NAME, DEMO_USER_ID, HALL } from "./constants.js";
 import { InputManager } from "./player/InputManager.js";
 import { PlayerController } from "./player/PlayerController.js";
@@ -29,9 +31,18 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// Physically-plausible tone mapping — flat sRGB-clamped output is what made everything
+// look like a "greybox" even after adding materials; ACES + a reflection environment is
+// most of the perceived jump from "game placeholder" to "AAA-ish" at zero asset cost.
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1a140c);
+
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
 
@@ -51,6 +62,7 @@ scene.add(hall.group);
 buildHallLighting(scene);
 
 // --- Agents (docs/64_AI_AGENT_ROSTER.md — reception, payment, credit, deposit) ------------
+// docs/18_CHARACTER_ASSET_PIPELINE.md §4: distinct skin tone / hair / clothing per employee.
 const agents = new Map<string, AgentCharacter>();
 agents.set(
   "reception",
@@ -59,7 +71,8 @@ agents.set(
     name: "Reception",
     role: "Receptionist",
     position: hall.receptionDeskPosition.clone().add(new THREE.Vector3(0, 0, -1.4)),
-    bodyColor: 0x3a4a63,
+    facing: 0, // faces the entrance (+Z), to greet arriving customers
+    appearance: APPEARANCE_PRESETS[0],
   }),
 );
 
@@ -75,7 +88,8 @@ hall.bankerStations.forEach((station, index) => {
       name: id === "payment" ? "Aziza" : id === "credit" ? "Aziza Karimova" : "Deposit Agent",
       role: id === "payment" ? "Payment Specialist" : id === "credit" ? "Credit Specialist" : "Deposit Specialist",
       position: station.position,
-      bodyColor: 0x4a3a2a,
+      facing: station.facing,
+      appearance: APPEARANCE_PRESETS[(index + 1) % APPEARANCE_PRESETS.length],
     }),
   );
 });
@@ -259,7 +273,7 @@ const clock = new THREE.Clock();
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   player.update(dt);
-  for (const agent of agents.values()) agent.lookAtTarget(player.position);
+  for (const agent of agents.values()) agent.update(dt, player.position);
   updateInteraction();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);

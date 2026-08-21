@@ -4,6 +4,8 @@
 // concern per IMPLEMENTATION_PLAN.md Stage D).
 
 import * as THREE from "three";
+import { CharacterAnimator } from "../characters/CharacterAnimator.js";
+import { buildCharacterRig } from "../characters/CharacterRig.js";
 import { InputManager } from "./InputManager.js";
 import type { HallBounds } from "../world/BankHall.js";
 
@@ -11,15 +13,22 @@ const WALK_SPEED = 3.2;
 const RUN_SPEED = 6.2;
 const ACCEL = 14;
 const CAMERA_DISTANCE = 5.5;
-const CAMERA_EYE_HEIGHT = 1.6;
-const PITCH_MIN = -0.55;
-const PITCH_MAX = 0.45;
+const CAMERA_EYE_HEIGHT = 1.5;
+// Positive pitch = camera raised above eye height, looking down at the player (the
+// classic over-the-shoulder angle from docs/06 §6 / docs/33 §8) — see updateCamera().
+const DEFAULT_PITCH = 0.28;
+const PITCH_MIN = -0.3;
+const PITCH_MAX = 0.65;
 
 export class PlayerController {
   readonly body: THREE.Group;
 
-  private yaw = Math.PI; // facing -Z (into the hall) from the entrance
-  private pitch = -0.12;
+  private readonly animator: CharacterAnimator;
+  // yaw=0 keeps the forward-movement formula below aligned with world -Z ("deeper into
+  // the hall") as the default "W" direction, and the camera (see updateCamera) then sits
+  // on the +Z side — i.e. behind the player, between them and the entrance — for free.
+  private yaw = 0;
+  private pitch = DEFAULT_PITCH;
   private currentSpeed = 0;
 
   constructor(
@@ -28,8 +37,15 @@ export class PlayerController {
     private readonly bounds: HallBounds,
     spawnPosition: THREE.Vector3,
   ) {
-    this.body = buildPlaceholderPlayerBody();
+    const rig = buildCharacterRig({
+      clothingColor: 0x1f2733,
+      accentColor: 0xc9a55c,
+      hairColor: 0x241a12,
+    });
+    this.body = rig.group;
+    this.body.name = "PLACEHOLDER_Player";
     this.body.position.copy(spawnPosition);
+    this.animator = new CharacterAnimator(rig.joints);
   }
 
   update(deltaSeconds: number): void {
@@ -52,20 +68,35 @@ export class PlayerController {
       next.x = clamp(next.x, this.bounds.minX, this.bounds.maxX);
       next.z = clamp(next.z, this.bounds.minZ, this.bounds.maxZ);
       this.body.position.copy(next);
-      this.body.rotation.y = Math.atan2(direction.x, direction.z) + Math.PI;
+      // The rig's local +Z is its face direction (nose/badge) — see CharacterRig.ts —
+      // so no extra offset here, unlike the old undirected capsule placeholder.
+      this.body.rotation.y = Math.atan2(direction.x, direction.z);
     } else {
       this.currentSpeed = Math.max(0, this.currentSpeed - ACCEL * deltaSeconds);
     }
 
+    this.animator.update(deltaSeconds, this.currentSpeed);
     this.updateCamera();
   }
 
+  /**
+   * Explicit spherical orbit — NOT `offset.applyEuler(new THREE.Euler(pitch, yaw, 0,
+   * "YXZ"))`. That composed rotation collapses the vertical component for large yaw
+   * values (it put the camera almost inside the character's head at yaw=Math.PI,
+   * verified against a screenshot). This formula's per-axis math is checked by hand at
+   * yaw=0: camera lands at (0, eyeY + distance*sin(pitch), eyeZ + distance*cos(pitch)) —
+   * i.e. straightforwardly behind (+Z) and above the player, looking down at eyeTarget.
+   */
   private updateCamera(): void {
-    const offset = new THREE.Vector3(0, 0, CAMERA_DISTANCE);
-    offset.applyEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
+    const horizontalDistance = CAMERA_DISTANCE * Math.cos(this.pitch);
+    const verticalOffset = CAMERA_DISTANCE * Math.sin(this.pitch);
 
     const eyeTarget = this.body.position.clone().add(new THREE.Vector3(0, CAMERA_EYE_HEIGHT, 0));
-    this.camera.position.copy(eyeTarget).add(offset);
+    this.camera.position.set(
+      eyeTarget.x + Math.sin(this.yaw) * horizontalDistance,
+      eyeTarget.y + verticalOffset,
+      eyeTarget.z + Math.cos(this.yaw) * horizontalDistance,
+    );
     this.camera.position.y = Math.max(this.camera.position.y, 0.6);
     this.camera.lookAt(eyeTarget);
   }
@@ -81,25 +112,6 @@ export class PlayerController {
   get isMoving(): boolean {
     return this.currentSpeed > 0.05;
   }
-}
-
-function buildPlaceholderPlayerBody(): THREE.Group {
-  const group = new THREE.Group();
-  group.name = "PLACEHOLDER_Player";
-
-  const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x1f2733, roughness: 0.6 });
-  const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xd9b391, roughness: 0.7 });
-
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.85, 6, 12), bodyMaterial);
-  torso.position.y = 0.92;
-  torso.castShadow = true;
-  group.add(torso);
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 16, 16), skinMaterial);
-  head.position.y = 1.62;
-  group.add(head);
-
-  return group;
 }
 
 function clamp(value: number, min: number, max: number): number {
