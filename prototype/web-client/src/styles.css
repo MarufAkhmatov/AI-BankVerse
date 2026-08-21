@@ -170,6 +170,25 @@ body {
   margin-bottom: 6px;
 }
 
+/* Dialogue-only, no buttons — pinned to the left so it stops covering the character/scene
+   that the confirmation and receipt panels (still centered) actually need attention on. */
+#conversation-panel {
+  top: auto;
+  left: 24px;
+  bottom: 150px;
+  transform: none;
+  width: min(360px, 86vw);
+  max-width: min(360px, 86vw);
+}
+
+@media (max-width: 767px) {
+  #conversation-panel {
+    /* Clear the joystick (bottom:90px, 110px tall) and the interaction prompt above it. */
+    bottom: 215px;
+    left: 12px;
+  }
+}
+
 #text-input-bar {
   position: absolute;
   bottom: 20px;
