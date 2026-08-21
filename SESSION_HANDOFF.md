@@ -39,19 +39,39 @@ Claude Code
   electricity-payment vertical slice (greet → intent → confirm → execute → receipt),
   cancellation, and the unrecognized-request clarify path all work end-to-end with zero
   console errors.
+- **Visual quality pass** (same session, in response to explicit user feedback that the
+  first pass looked too plain): `characters/CharacterRig.ts` + `CharacterAnimator.ts` — a
+  real articulated humanoid (joints, contralateral-gait walk cycle, idle breathing) shared
+  by the player and every `AgentCharacter`, with a small varied-appearance palette so
+  employees aren't clones (docs/18 §4). `world/textures.ts` — procedural canvas-drawn
+  marble/wood/bronze/skyline textures, zero external assets or generation cost (user chose
+  the free code-only option over paid AI image generation when asked). ACES tone mapping +
+  a `RoomEnvironment` reflection map on the renderer. **Caught and fixed via screenshot** a
+  camera-math bug (`Euler(pitch, yaw, 0, "YXZ").applyEuler` collapsed the vertical offset at
+  yaw=Math.PI, putting the camera almost inside the character's head) and a movement-facing
+  bug (stray `+Math.PI` that only became visible once the rig had a directional face). See
+  commit `95184e2` for the exact math fix. **Ceiling communicated to the user**: true
+  rigged/skinned photorealistic humans (MetaHuman-class) are a docs/07 + docs/18-documented
+  Unreal-only capability — not achievable in a code-only Three.js prototype without an
+  external rigged-asset pipeline (e.g. licensed Mixamo/Ready-Player-Me models), which was
+  out of scope for this pass. Re-verified the full docs/46 flow, movement, and mobile
+  viewport again after the fix — see "Tests" below.
 - `prototype/unreal/README.md` — Stage D not started; left as a pointer, not scaffolded.
 - `.claude/launch.json` — `bankverse-api` (port 4300) and `bankverse-web` (port 5173,
   autoPort) preview configs.
 
 ## Current Task
 
-None in progress — Etap A, B, and C of `IMPLEMENTATION_PLAN.md` are complete. Awaiting
-direction on Stage D (needs Unreal Engine 5.8 installed first) or on deepening the web
-client (more departments, more agents, real character/environment art).
+None in progress — Etap A, B, C of `IMPLEMENTATION_PLAN.md` plus a visual-quality follow-up
+pass on the web client are complete. Awaiting direction on Stage D (needs Unreal Engine 5.8
+installed first), adding customer NPCs (explicitly deferred — see "Known Issues"), or a
+paid-texture pass if the user changes their mind about cost.
 
 ## Files Changed
 
-See `git log --stat` — three commits: docs (78 files), core (44 files), web-client (17 files).
+See `git log --stat` — five commits: docs (78 files), core (44 files), web-client (17 files),
+web-client session-handoff touch-up, web-client visual pass (7 files: new `characters/`
+module + texture/camera/facing fixes).
 
 ## Systems Implemented
 
@@ -73,6 +93,16 @@ PASS — `core`: `npm test` → 40/40 (vitest). `prototype/web-client` has no au
 
 - Unreal Engine 5.8 is not installed on this machine. UE client work (Stage D) cannot start
   until it is installed (~100+ GB; 138.8 GB free as of audit).
+- No customer NPCs walking around the hall yet. The user was explicitly offered this as an
+  option (alongside the character rig upgrade) and declined it for this pass — docs/20 (NPC
+  Life Simulation) and docs/40 (NPC Behavior Architecture) describe the target behavior when
+  it's picked up.
+- The character rig is stylized-articulated (proper joints, walk cycle, varied appearance),
+  not photorealistic. Getting closer to "real people" requires either paid AI-generated
+  reference art (offered, declined for cost) or, more fundamentally, moving to the Unreal +
+  MetaHuman pipeline docs/07 and docs/18 already specify — Three.js has no rigged human asset
+  to import without sourcing one externally (e.g. Mixamo), which needs explicit user sign-off
+  since it means downloading third-party files.
 - Docs 26–36 and 61 contain reconstructed sections — flagged inline, should be reviewed by
   the product owner against original intent.
 - `detectLanguageHeuristic` (ai-provider-mock) is a light heuristic, not a real language
@@ -101,17 +131,21 @@ PASS — `core`: `npm test` → 40/40 (vitest). `prototype/web-client` has no au
 ## Next Recommended Step
 
 Pick one:
-1. Deepen the web client — more departments/agents, richer geometry/materials, an
-   `AgentController` swap to real character art.
+1. Add customer NPCs wandering/queueing in the hall (docs/20, docs/40) — deferred by explicit
+   user choice this session, not because it's hard; reuses `CharacterRig`/`CharacterAnimator`.
 2. Add a Vitest+Playwright (or similar) test suite for `prototype/web-client` so the UI flow
    is regression-tested, not just manually verified.
 3. Install Unreal Engine 5.8 and start Stage D per `prototype/unreal/README.md`.
+4. If the user wants closer-to-photoreal characters: either approve paid AI-generated
+   reference art, or approve sourcing an externally rigged human model (e.g. Mixamo) —
+   both need explicit sign-off before spending credits or downloading third-party files.
 
 ## Git
 
 Branch: `main`
-Commit: `c2ae19c` (web-client), preceded by `f8c64b4` (core), `0f868d3` (docs)
-Working tree: clean, all three stages pushed to `origin/main`
+Commit: `95184e2` (visual pass), preceded by `c2a737d`, `c2ae19c` (web-client), `f8c64b4`
+(core), `0f868d3` (docs)
+Working tree: clean, everything pushed to `origin/main`
 
 ## Important Notes
 
