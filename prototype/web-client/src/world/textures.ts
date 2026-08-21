@@ -174,6 +174,80 @@ export function createSkylineTexture(seed = 11): THREE.CanvasTexture {
   return texture;
 }
 
+/**
+ * Guastavino-style quilted/coffered vault ceiling pattern — warm terracotta tile with a
+ * diamond lattice relief, inspired by early-20th-century banking-hall vaults (docs/63
+ * "architectural language, not exact building" — this is an original diamond motif, not a
+ * traced copy of any specific vault).
+ */
+export function createVaultTexture(options: { repeatX?: number; repeatY?: number; seed?: number } = {}): THREE.CanvasTexture {
+  const size = 512;
+  const { canvas, ctx } = makeCanvas(size);
+  const rng = mulberry32(options.seed ?? 21);
+
+  ctx.fillStyle = "#5a3624";
+  ctx.fillRect(0, 0, size, size);
+
+  const cell = size / 6;
+  for (let row = -1; row <= 6; row++) {
+    for (let col = -1; col <= 6; col++) {
+      const cx = col * cell + (row % 2 === 0 ? 0 : cell / 2);
+      const cy = row * cell * 0.72;
+      const jitter = (rng() - 0.5) * 4;
+
+      const grad = ctx.createRadialGradient(cx + jitter, cy, 2, cx + jitter, cy, cell * 0.62);
+      grad.addColorStop(0, "rgba(20,10,4,0.55)");
+      grad.addColorStop(0.55, "rgba(90,54,36,0.15)");
+      grad.addColorStop(1, "rgba(150,100,60,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(cx + jitter, cy - cell * 0.55);
+      ctx.lineTo(cx + jitter + cell * 0.55, cy);
+      ctx.lineTo(cx + jitter, cy + cell * 0.55);
+      ctx.lineTo(cx + jitter - cell * 0.55, cy);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(210,160,90,0.35)";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+  }
+
+  // Warm highlight sweep to suggest raking light along the vault.
+  const sweep = ctx.createLinearGradient(0, 0, size, size);
+  sweep.addColorStop(0, "rgba(255,210,140,0.12)");
+  sweep.addColorStop(0.5, "rgba(0,0,0,0)");
+  sweep.addColorStop(1, "rgba(0,0,0,0.2)");
+  ctx.fillStyle = sweep;
+  ctx.fillRect(0, 0, size, size);
+
+  return toTexture(canvas, options.repeatX ?? 10, options.repeatY ?? 2);
+}
+
+/** Vertically-folded drapery fabric, for the window curtains. */
+export function createCurtainTexture(color: string, repeat = 1): THREE.CanvasTexture {
+  const size = 256;
+  const { canvas, ctx } = makeCanvas(size);
+
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, size, size);
+
+  const foldCount = 10;
+  for (let i = 0; i < foldCount; i++) {
+    const x = (i / foldCount) * size;
+    const w = size / foldCount;
+    const grad = ctx.createLinearGradient(x, 0, x + w, 0);
+    grad.addColorStop(0, "rgba(0,0,0,0.28)");
+    grad.addColorStop(0.5, "rgba(255,255,255,0.18)");
+    grad.addColorStop(1, "rgba(0,0,0,0.28)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, 0, w, size);
+  }
+
+  return toTexture(canvas, repeat, 1);
+}
+
 /** Radial-gradient floor emblem — a stand-in bank crest, not a copied logo. */
 export function createFloorEmblemTexture(accent = "#c9a55c"): THREE.CanvasTexture {
   const size = 512;

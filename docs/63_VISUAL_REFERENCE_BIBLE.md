@@ -1,5 +1,18 @@
 # AI BankVerse — Visual Reference Bible
 
+> **Reference C (2026-08-22, user-supplied, implemented):** interior of the Central Savings
+> Bank Building, 2100 Broadway, Manhattan (via daytoninmanhattan.blogspot.com — "Daytonian
+> in Manhattan: The Central Savings Bank Bldg"). This is the closest 1:1 architectural match
+> to `prototype/web-client`'s hall as of this doc revision: a shallow coffered/quilted
+> barrel vault (terracotta tone, diamond lattice — see `world/textures.ts`
+> `createVaultTexture`), tall arched windows with gold/orange draped curtains
+> (`createCurtainTexture`, arch profile via `createArchGeometry` in `world/BankHall.ts`), a
+> row of ornate tiered bronze chandeliers down the central axis, and — the feature that most
+> defines the reference photo — one long central bronze-and-glass teller counter with
+> banker's lamps along the top (`buildTellerCounter`). Same rule as Reference A/B below:
+> architectural language, not a traced copy — no logos, plaques, or exact ornament from the
+> source building are reproduced.
+
 ## 1. Reference Images
 
 The supplied architectural references establish the target
