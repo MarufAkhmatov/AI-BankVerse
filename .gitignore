@@ -35,3 +35,10 @@ Build/
 Thumbs.db
 .idea/
 *.log
+
+# === Raw supplied 3D source assets (multi-GB, unoptimized) ===
+# Optimized/decimated copies actually used by the app live in
+# prototype/web-client/public/models/ and ARE tracked (via Git LFS).
+# Note: .gitignore patterns are literal, not shell-quoted — no quotes around the spaces.
+prototype/the bank/
+prototype/workers and clients and police/

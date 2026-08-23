@@ -19,7 +19,8 @@ import { InputManager } from "./player/InputManager.js";
 import { PlayerController } from "./player/PlayerController.js";
 import { UIController } from "./ui/UIController.js";
 import { VoiceInput } from "./voice/VoiceInput.js";
-import { buildBankHall, buildHallLighting, HALL_BOUNDS } from "./world/BankHall.js";
+import { buildHallLighting } from "./world/BankHall.js";
+import { loadBankHall } from "./world/ImportedBankHall.js";
 
 const RECEPTION_GREETING =
   "Assalomu alaykum. AI BankVerse'ga xush kelibsiz. Sizga qanday yordam berishim mumkin?"; // docs/03 §1, verbatim
@@ -95,7 +96,7 @@ async function main() {
   resize();
 
   // --- World ----------------------------------------------------------------------------
-  const hall = buildBankHall();
+  const hall = await loadBankHall();
   scene.add(hall.group);
   buildHallLighting(scene);
 
@@ -154,8 +155,10 @@ async function main() {
     document.getElementById("mobile-joystick-base"),
     document.getElementById("mobile-joystick-knob"),
   );
-  const spawn = new THREE.Vector3(0, 0, HALL_BOUNDS.entranceZ - 3);
-  const player = new PlayerController(camera, input, HALL_BOUNDS, spawn, spawnCharacter("player"));
+  // Spawns just in front of the reception counter, in the confirmed-open floor area — see
+  // ImportedBankHall.ts's comment on receptionDeskPosition for how that was verified.
+  const spawn = hall.receptionDeskPosition.clone().add(new THREE.Vector3(0, 0, 12));
+  const player = new PlayerController(camera, input, hall.bounds, spawn, spawnCharacter("player"));
   scene.add(player.body);
 
   if ("ontouchstart" in window || navigator.maxTouchPoints > 0) {
