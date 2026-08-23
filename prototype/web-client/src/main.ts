@@ -19,6 +19,7 @@ import { InputManager } from "./player/InputManager.js";
 import { PlayerController } from "./player/PlayerController.js";
 import { UIController } from "./ui/UIController.js";
 import { VoiceInput } from "./voice/VoiceInput.js";
+import { loadStaticNpc, loadWalkingNpc, type StaticNpc, type WalkingNpc } from "./world/AmbientNPCs.js";
 import { buildHallLighting } from "./world/BankHall.js";
 import { loadBankHall } from "./world/ImportedBankHall.js";
 
@@ -148,6 +149,24 @@ async function main() {
     );
   });
   for (const agent of agents.values()) scene.add(agent.group);
+
+  // --- Ambient NPCs (docs/20_NPC_LIFE_SIMULATION.md, lightweight slice) ------------------
+  // Positions were confirmed open/correctly-floored via the same raycasting approach as
+  // the reception/banker stations above (see ImportedBankHall.ts), avoiding those spots.
+  const staticNpcs: StaticNpc[] = await Promise.all([
+    loadStaticNpc({ url: "/models/npcs/police_officer.glb", position: new THREE.Vector3(12, 0, 3), facing: Math.PI * 0.6 }),
+    loadStaticNpc({ url: "/models/npcs/staff_woman.glb", position: new THREE.Vector3(1, 0, -25), facing: 0 }),
+    loadStaticNpc({ url: "/models/npcs/client_woman.glb", position: new THREE.Vector3(-12, 0, 5), facing: -Math.PI * 0.4 }),
+    loadStaticNpc({ url: "/models/npcs/client_man.glb", position: new THREE.Vector3(12, 0, -20), facing: Math.PI * 0.7 }),
+    loadStaticNpc({ url: "/models/npcs/client_elegant.glb", position: new THREE.Vector3(-12, 0, -20), facing: -Math.PI * 0.7 }),
+  ]);
+  for (const npc of staticNpcs) scene.add(npc.group);
+
+  const walkingNpc: WalkingNpc = await loadWalkingNpc({
+    url: "/models/npcs/walking_customer.glb",
+    waypoints: [new THREE.Vector3(-10, 0, 8), new THREE.Vector3(10, 0, 8)],
+  });
+  scene.add(walkingNpc.group);
 
   // --- Player -----------------------------------------------------------------------------
   const input = new InputManager(
@@ -326,10 +345,14 @@ async function main() {
 
   // --- Animation loop -------------------------------------------------------------------------
   const clock = new THREE.Clock();
+  let elapsed = 0;
   function animate() {
     const dt = Math.min(clock.getDelta(), 0.05);
+    elapsed += dt;
     player.update(dt);
     for (const agent of agents.values()) agent.update(dt, player.position);
+    for (const npc of staticNpcs) npc.update(elapsed);
+    walkingNpc.update(dt);
     updateInteraction();
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
