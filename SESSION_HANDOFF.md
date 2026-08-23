@@ -4,7 +4,7 @@ Read this before continuing any prior work. Do not repeat completed work.
 
 ## Date
 
-2026-08-22
+2026-08-24
 
 ## Developer
 
@@ -92,12 +92,39 @@ Claude Code
   tracked). Furniture/bronze/glass remain the free procedural textures from `world/textures.ts`
   by the user's explicit choice not to spend the rest of the balance. See
   `public/textures/NOTICE.md`.
+- **Swapped the procedural hall for the user's real Sketchfab model, added NPCs**
+  (2026-08-24 — the user said "the bank I built didn't look good and took too long to fix,
+  here's a real one" and supplied `prototype/the bank/` (a 166 MB, 611-mesh Sketchfab
+  interior) plus `prototype/workers and clients and police/` (20 AI-generated character
+  models, only one rigged) and asked whether to install Unity instead. **Decided against
+  Unity** — explained to the user and stand by it: this environment's screenshot-driven
+  visual debugging (what caught every bug listed above) doesn't exist for a native Unity
+  Editor, Unity was never in this project's docs (they specify Unreal), and rebuilding the
+  whole working game/backend/UI loop in C# from scratch would cost far more time than
+  adapting already-GLB-format assets into the existing Three.js pipeline. Optimized the
+  hall to ~80 MB via `gltf-transform` (meshopt + mesh simplification; texture recompression
+  to WebP fails on this environment's sharp/libvips install — geometry-only reduction for
+  now, see `public/models/HALL_NOTICE.md`) and swapped it in via new
+  `world/ImportedBankHall.ts`. **Found and fixed a real bug this way**: `Box3.setFromObject`
+  on the raw model put the floor ~5–6 units below where it actually is (disconnected low
+  geometry — foundation/exterior — skews the bbox), so every character was standing under
+  the building, matching exactly what the user reported live ("bino tepada, avatarlar
+  pastda"). Fixed with `detectFloor()` — raycasts a grid down through the model and takes
+  the mode of the lowest hits, far more robust than trusting an unknown model's bounds.
+  Reception/banker-station/player-spawn positions also switched from percentage-of-bounds
+  guesses to raycast-confirmed coordinates for the same reason. Added 6 ambient NPCs
+  (decimated 50–100x from 1.3–3M verts each) via new `world/AmbientNPCs.ts`: 5 static
+  (idle sway only, no skeleton) plus the one rigged source file as a patrolling walker,
+  reusing `AnimatedCharacterController`. Also found the `core/packages/api` dev server had
+  stopped running (unrelated to this work) — restarted it; that's what the "texnik
+  xatolik" the user saw was actually from. Every model here carries a **license-unverified**
+  flag (docs/69 §7) — resolve before any public/shared build. Commits `846c72a`, `f7ec883`.
 
 ## Current Task
 
-None in progress — Etap A, B, C of `IMPLEMENTATION_PLAN.md`, a visual-quality pass, a real
-rigged-character swap, and a partial AI-texture pass are all complete. Awaiting direction —
-see "Next Recommended Step".
+None in progress — Etap A, B, C of `IMPLEMENTATION_PLAN.md`, plus visual-quality, rigged-
+character, AI-texture, real-hall-swap, and ambient-NPC passes are all complete. Awaiting
+direction — see "Next Recommended Step".
 
 ## Files Changed
 
@@ -123,12 +150,31 @@ PASS — `core`: `npm test` → 40/40 (vitest). `prototype/web-client` has no au
 
 ## Known Issues
 
-- Unreal Engine 5.8 is not installed on this machine. UE client work (Stage D) cannot start
-  until it is installed (~100+ GB; 138.8 GB free as of audit).
-- No customer NPCs walking around the hall yet. The user was explicitly offered this as an
-  option (alongside the character rig upgrade) and declined it for this pass — docs/20 (NPC
-  Life Simulation) and docs/40 (NPC Behavior Architecture) describe the target behavior when
-  it's picked up.
+- Unreal Engine 5.8 is not installed on this machine (Unity considered and explicitly
+  declined this session instead — see above). UE client work (Stage D) cannot start
+  until it is installed (~100+ GB; free space not re-checked since the audit).
+- **Texture compression is broken in this environment**: `gltf-transform`'s
+  `--texture-compress webp/ktx2/auto` fails with a libvips `colourspace: parameter space
+  not set` error on every model tried (the hall and multiple NPC files) — looks like the
+  duplicate `sharp@0.34.5`/`sharp@0.35.3` install under `@gltf-transform/functions` /
+  `ndarray-pixels`, not a per-file issue. Geometry simplification still worked and is
+  where the real win was, but every imported model (hall, Soldier.glb, 6 NPCs) is still
+  carrying full-resolution/original-format textures — total page weight is ~150MB as a
+  result. Fixing this (rebuild/pin one sharp version, or a different image tool) would be
+  the highest-leverage remaining performance win.
+- **License status of all imported 3D models is unverified** — the bank hall
+  (`prototype/the bank/`, Sketchfab-exported) and all 20 character models
+  (`prototype/workers and clients and police/`) came with no attribution or license file.
+  See `public/models/HALL_NOTICE.md` and `public/models/npcs/NOTICE.md`. Must be resolved
+  before any public/shared build, per docs/69 §7.
+- Only 6 of the 20 supplied character models are placed (1 walking, 5 static) — the other
+  14 (mostly "portrait"/"floating pose" busts, likely not full-body) weren't used, to keep
+  page weight down. `world/AmbientNPCs.ts` and `public/models/npcs/NOTICE.md` list what's
+  available if more are wanted.
+- Ambient NPC placement was raycast-confirmed as open floor but not exhaustively checked
+  against every column/alcove in the ~90m-long hall — see `public/models/npcs/NOTICE.md`'s
+  placement note. Full docs/20 (NPC Life Simulation) queue/behavior-tree simulation (not
+  just idle presence) is still not implemented.
 - Characters now use a real rigged/skinned/animated human mesh (`Soldier.glb`, see above),
   not the old procedural rig — but it reads as tactical/military (visor hidden, uniform
   recolored, still not business attire), because it was the only freely-fetchable option
@@ -164,28 +210,37 @@ PASS — `core`: `npm test` → 40/40 (vitest). `prototype/web-client` has no au
 ## Next Recommended Step
 
 Pick one:
-1. Find/source a better-fitting rigged human (business attire, not tactical) with a full
-   walk cycle — the search this session covered three.js's bundled examples, Ready Player Me
-   (dead), and Mixamo (needs manual login); a paid character asset or a user-provided Mixamo
-   export are the next things to try. `characters/GLTFCharacterLoader.ts` and
-   `AnimatedCharacterController.ts` are already generic enough to swap the GLB URL.
-2. Add customer NPCs wandering/queueing in the hall (docs/20, docs/40) — deferred by explicit
-   user choice earlier this session; the old procedural `CharacterRig`/`CharacterAnimator`
-   (unused now, still in the tree) is the lightweight option docs/18 §9 suggests for
-   background/distant NPCs, vs. the heavier GLTF character for named agents.
-3. Generate the remaining 3 candidate textures (walnut wood, bronze, window skyline) if the
-   user wants to spend the rest of their credit balance (6 left as of this session).
-4. Add a Vitest+Playwright (or similar) test suite for `prototype/web-client` so the UI flow
-   is regression-tested, not just manually verified.
-5. Install Unreal Engine 5.8 and start Stage D per `prototype/unreal/README.md` — the only
-   path to true MetaHuman-grade photoreal, per the project's own docs/07 and docs/18.
+1. **Fix texture compression** (gltf-transform's sharp/libvips colourspace error) — the
+   single highest-leverage remaining perf win, since it would shrink the hall + Soldier.glb
+   + 6 NPCs (~150MB combined) substantially without any visual-quality tradeoff.
+2. Resolve the license-unverified flag on the hall and character models before any
+   public/shared build (docs/69 §7) — find the original Sketchfab listings, or replace
+   with confirmed-licensed assets.
+3. Add more of the remaining 14 unused character models from
+   `prototype/workers and clients and police/` if the scene should feel busier —
+   `world/AmbientNPCs.ts` takes a `StaticNpcSpec`/`WalkingNpcSpec` per character.
+4. Find/source a better-fitting rigged human for the player/named agents (business attire,
+   not `Soldier.glb`'s tactical look) with a full walk cycle — Ready Player Me is dead,
+   Mixamo needs a manual login this environment can't automate; a paid asset or a
+   user-provided Mixamo export are the remaining options.
+5. Add a Vitest+Playwright (or similar) test suite for `prototype/web-client` so the UI flow
+   is regression-tested, not just manually verified each session.
+6. Install Unreal Engine 5.8 and start Stage D per `prototype/unreal/README.md` — the only
+   path to true MetaHuman-grade photoreal, per the project's own docs/07 and docs/18; Unity
+   was considered and explicitly declined this session (see "Completed" above).
+
+Note: `world/BankHall.ts`'s `buildBankHall()` (the procedural hall) and
+`characters/CharacterRig.ts`/`CharacterAnimator.ts` (the procedural character rig) are now
+fully unused — kept as reference/fallback, not deleted, since `buildHallLighting()` and
+some shared types still come from `BankHall.ts`.
 
 ## Git
 
 Branch: `main`
-Commit: `5c44bf6` (hall interior redesign), preceded by `10f7845`, `a3a7ef2` (AI textures),
-`da9689d` (rigged character), `95184e2` (visual pass), `c2a737d`, `c2ae19c` (web-client),
-`f8c64b4` (core), `0f868d3` (docs)
+Commit: `f7ec883` (ambient NPCs), preceded by `846c72a` (real hall swap), `aa1fa0c`,
+`5c44bf6` (hall interior redesign), `10f7845`, `a3a7ef2` (AI textures), `da9689d` (rigged
+character), `95184e2` (visual pass), `c2a737d`, `c2ae19c` (web-client), `f8c64b4` (core),
+`0f868d3` (docs)
 Working tree: clean, everything pushed to `origin/main`
 
 ## Important Notes
