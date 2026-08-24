@@ -8,12 +8,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { bankverseApi } from "./api/client.js";
 import type { ChatResponse } from "./api/client.js";
 import { AgentCharacter, type AgentStatus } from "./agents/AgentCharacter.js";
-import {
-  type CharacterInstance,
-  instantiateCharacter,
-  loadCharacterBase,
-  normalizeToGround,
-} from "./characters/GLTFCharacterLoader.js";
+import { type CharacterInstance, instantiateCharacter, loadCharacterBase } from "./characters/GLTFCharacterLoader.js";
 import { DEMO_ACCOUNT_ID, DEMO_CUSTOMER_NAME, DEMO_USER_ID } from "./constants.js";
 import { InputManager } from "./player/InputManager.js";
 import { PlayerController } from "./player/PlayerController.js";
@@ -112,7 +107,9 @@ async function main() {
 
   function spawnCharacter(tintKey: keyof typeof CHARACTER_TINTS): CharacterInstance {
     const instance = instantiateCharacter(characterBase);
-    normalizeToGround(instance.group);
+    // Grounding now happens in AgentCharacter/PlayerController, after they set the
+    // character's final position — see the comment in AmbientNPCs.ts for why the order
+    // matters. styleCharacter only touches materials, so it's fine to run here.
     styleCharacter(instance.group, CHARACTER_TINTS[tintKey]);
     return instance;
   }

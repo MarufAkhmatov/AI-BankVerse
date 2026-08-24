@@ -5,7 +5,7 @@
 
 import * as THREE from "three";
 import { AnimatedCharacterController } from "../characters/AnimatedCharacterController.js";
-import type { CharacterInstance } from "../characters/GLTFCharacterLoader.js";
+import { normalizeToGround, type CharacterInstance } from "../characters/GLTFCharacterLoader.js";
 import { InputManager } from "./InputManager.js";
 import type { HallBounds } from "../world/BankHall.js";
 
@@ -41,6 +41,10 @@ export class PlayerController {
     this.body = character.group;
     this.body.name = "PLACEHOLDER_Player";
     this.body.position.copy(spawnPosition);
+    // normalizeToGround AFTER positioning, not before — see AmbientNPCs.ts's comment on
+    // the same ordering bug (it also silently broke here; masked because Soldier.glb's
+    // bind pose already has its lowest point near local y=0).
+    normalizeToGround(this.body);
     this.animator = new AnimatedCharacterController(character.mixer, character.animations);
   }
 

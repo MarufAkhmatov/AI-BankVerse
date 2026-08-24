@@ -31,16 +31,13 @@ export interface WalkingNpcSpec {
 }
 
 export class StaticNpc {
-  readonly group: THREE.Group;
   private readonly idlePhase = Math.random() * Math.PI * 2;
-  private readonly baseY: number;
 
-  constructor(group: THREE.Group, position: THREE.Vector3, facing: number) {
-    this.group = group;
-    this.group.position.copy(position);
-    this.group.rotation.y = facing;
-    this.baseY = position.y;
-  }
+  /** `group` must already be positioned AND ground-normalized — see loadStaticNpc. */
+  constructor(
+    readonly group: THREE.Group,
+    private readonly baseY: number,
+  ) {}
 
   update(elapsedSeconds: number): void {
     const t = elapsedSeconds + this.idlePhase;
@@ -59,34 +56,44 @@ export async function loadStaticNpc(spec: StaticNpcSpec): Promise<StaticNpc> {
       mesh.receiveShadow = true;
     }
   });
+
+  // Position (with rotation) BEFORE normalizeToGround, not after: normalizeToGround's
+  // ground correction is `position.y -= boundingBoxMin.y`, a *relative* adjustment on
+  // top of whatever position.y already holds. Doing it in the other order — as an
+  // earlier version of this file did — meant the position set here would overwrite that
+  // correction outright, since group.position.copy(spec.position) always sets y back to
+  // spec.position.y (usually 0). That silently only worked for Soldier.glb, whose bind
+  // pose happens to already have its lowest point near local y=0; these AI-generated
+  // portrait meshes have their origin near chest height, so the same bug here left
+  // every character sunk roughly waist-deep into the floor — exactly what surfaced when
+  // the user actually looked at it running.
+  group.position.copy(spec.position);
+  group.rotation.y = spec.facing;
   normalizeToGround(group, spec.heightMeters ?? 1.72);
-  return new StaticNpc(group, spec.position, spec.facing);
+
+  return new StaticNpc(group, group.position.y);
 }
 
 /** The one rigged source model — walks a simple back-and-forth patrol between waypoints. */
 export class WalkingNpc {
-  readonly group: THREE.Group;
   private readonly animator: AnimatedCharacterController;
   private waypointIndex = 1;
-  private readonly speed: number;
 
+  /** `group` must already be positioned at waypoints[0] AND ground-normalized. */
   constructor(
-    group: THREE.Group,
+    readonly group: THREE.Group,
     mixer: THREE.AnimationMixer,
     animations: THREE.AnimationClip[],
     private readonly waypoints: THREE.Vector3[],
-    speed: number,
+    private readonly speed: number,
   ) {
-    this.group = group;
-    this.group.position.copy(waypoints[0]);
     this.animator = new AnimatedCharacterController(mixer, animations);
-    this.speed = speed;
   }
 
   update(deltaSeconds: number): void {
     const target = this.waypoints[this.waypointIndex];
     const toTarget = target.clone().sub(this.group.position);
-    toTarget.y = 0;
+    toTarget.y = 0; // horizontal-only steering — ground height was fixed once at load time
     const distance = toTarget.length();
 
     if (distance < 0.3) {
@@ -111,7 +118,11 @@ export async function loadWalkingNpc(spec: WalkingNpcSpec): Promise<WalkingNpc> 
       mesh.receiveShadow = true;
     }
   });
+
+  // Same position-then-normalize order as loadStaticNpc, and for the same reason.
+  group.position.copy(spec.waypoints[0]);
   normalizeToGround(group, spec.heightMeters ?? 1.72);
+
   const mixer = new THREE.AnimationMixer(group);
   return new WalkingNpc(group, mixer, gltf.animations, spec.waypoints, spec.speed ?? 0.9);
 }

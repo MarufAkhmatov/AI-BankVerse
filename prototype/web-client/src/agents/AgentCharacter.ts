@@ -5,7 +5,7 @@
 
 import * as THREE from "three";
 import { AnimatedCharacterController } from "../characters/AnimatedCharacterController.js";
-import type { CharacterInstance } from "../characters/GLTFCharacterLoader.js";
+import { normalizeToGround, type CharacterInstance } from "../characters/GLTFCharacterLoader.js";
 
 export type AgentStatus = "AVAILABLE" | "BUSY" | "PROCESSING" | "OFFLINE";
 
@@ -46,6 +46,9 @@ export class AgentCharacter {
     this.group.name = `PLACEHOLDER_Agent_${options.id}`;
     this.group.position.copy(options.position);
     this.group.rotation.y = options.facing ?? 0;
+    // normalizeToGround AFTER positioning — see AmbientNPCs.ts's comment on this ordering
+    // bug (masked here only because Soldier.glb's bind pose already sits near local y=0).
+    normalizeToGround(this.group);
     this.animator = new AnimatedCharacterController(options.character.mixer, options.character.animations);
 
     this.statusRing = new THREE.Mesh(
